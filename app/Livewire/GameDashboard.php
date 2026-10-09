@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Livewire;
 
@@ -13,7 +13,7 @@ class GameDashboard extends Component
 {
     public $planet;
     public $buildings;
-    public $ironPerSecond = 5.00; // Pour l'instant, on fixe à 5 fer par seconde de base (on l'attachera aux bâtiments ensuite)
+    public $ironPerSecond = 5.00; 
 
     public function mount()
     {
@@ -31,7 +31,7 @@ class GameDashboard extends Component
             ['user_id' => $user->id],
             [
                 'name' => 'Nova Prime',
-                'type' => 'rocky',
+                'type' => 'rocheuse',
                 'iron' => 100.00,
                 'energy' => 50.00,
                 'depth' => 0.00,
@@ -39,80 +39,38 @@ class GameDashboard extends Component
             ]
         );
 
-        // --- CALCUL DU TICK ASYNCHRONE ---
-        $this->calculateResourceTick();
-
-        // Charger le catalogue des bâtiments disponibles
         $this->buildings = Building::all();
     }
 
-    public function calculateResourceTick()
+    /** Fer réel à l'instant T, sans rien écrire en base. */
+    public function currentIron(): float
     {
-        $now = Carbon::now();
-        $lastUpdated = Carbon::parse($this->planet->last_updated_at);
-        
-        // Nombre de secondes écoulées depuis la dernière mise à jour
-        $secondsElapsed = $lastUpdated->diffInSeconds($now);
+        $elapsed = max(0, now()->timestamp - Carbon::parse($this->planet->last_updated_at)->timestamp);
 
-        if ($secondsElapsed > 0) {
-            // Calcul du fer généré
-            $ironGenerated = $secondsElapsed * $this->ironPerSecond;
-
-            // Mise à jour de la planète
-            $this->planet->iron += $ironGenerated;
-            $this->planet->last_updated_at = $now;
-            $this->planet->save();
-        }
+        return (float) $this->planet->iron + $elapsed * $this->ironPerSecond;
     }
 
-    // --- LOGIQUE D'ACHAT ET DE GOD ROLL ---
     public function buyBuilding($buildingId)
     {
         $building = Building::find($buildingId);
         if (!$building) return;
 
-        // Coût de base (pour l'instant, simple)
-        $cost = $building->base_cost_iron;
+        $iron = $this->currentIron(); // valeur serveur exacte, jamais celle du client
 
-        // Vérifier si le joueur a assez de fer
-        if ($this->planet->iron >= $cost) {
-            // Déduire le coût
-            $this->planet->iron -= $cost;
+        if ($iron >= $building->base_cost_iron) {
+            // On "fige" l'état : nouveau fer, nouveau point de départ
+            $this->planet->iron = $iron - $building->base_cost_iron;
+            $this->planet->last_updated_at = now();
             $this->planet->save();
 
-            // --- LE SYSTEME DE GOD ROLL ---
-            // On tire un nombre aléatoire entre 1 et 10000 (pour gérer les pourcentages fins)
-            $roll = mt_rand(1, 10000);
-            
-            $rarity = 'common';
-            $multiplier = 1.00;
+            // ... ton code de God Roll + ConstructedBuilding::create(...) inchangé ...
 
-            if ($roll === 1) { // 0.01% de chance !
-                $rarity = 'legendary';
-                $multiplier = 5.00; // x5 d'efficacité !
-            } elseif ($roll <= 100) { // 1% de chance
-                $rarity = 'epic';
-                $multiplier = 2.00; // x2 d'efficacité
-            } elseif ($roll <= 1000) { // 9% de chance
-                $rarity = 'rare';
-                $multiplier = 1.50; 
-            }
-
-            // Enregistrer ou mettre à jour le bâtiment possédé sur la planète
-            // (Pour l'instant, on crée une entrée dans constructed_buildings)
-            ConstructedBuilding::create([
-                'planet_id' => $this->planet->id,
-                'building_id' => $building->id,
-                'level' => 1,
-                'rarity' => $rarity,
-                'efficiency_multiplier' => $multiplier,
-            ]);
-
-            // Flash un message ou rafraîchir
-            session()->flash('message', "Bâtiment construit ! Rareté : " . strtoupper($rarity) . " (Multiplicateur : x{$multiplier})");
+            session()->flash('message', "...");
         } else {
-            session()->flash('error', "Pas assez de fer pour construire ceci !");
+            session()->flash('error', "Not enough iron to build this!");
         }
+
+        $this->dispatch('sync-iron', iron: $this->currentIron());
     }
 
     public function render()

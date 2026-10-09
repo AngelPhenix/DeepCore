@@ -19,6 +19,8 @@ class Planet extends Model
         'last_updated_at',
     ];
 
+    protected $casts = ['last_updated_at' => 'datetime'];
+
     // Une planète appartient à un utilisateur
     public function user()
     {

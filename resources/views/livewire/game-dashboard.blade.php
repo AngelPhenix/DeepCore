@@ -1,13 +1,4 @@
-<div class="p-6 max-w-4xl mx-auto bg-gray-900 text-white rounded-xl shadow-md space-y-6"
-     x-data="{ 
-         iron: {{ $planet->iron }}, 
-         cps: {{ $ironPerSecond }},
-         init() {
-             setInterval(() => {
-                 this.iron += this.cps;
-             }, 1000);
-         }
-     }">
+<div class="p-6 max-w-4xl mx-auto bg-gray-900 text-white rounded-xl shadow-md space-y-6">
      
     <header class="flex justify-between items-center border-b border-gray-700 pb-4">
         <h1 class="text-2xl font-bold">Colony: {{ $planet->name }}</h1>
@@ -26,13 +17,26 @@
         </div>
     @endif
 
-    <!-- Resources Display -->
-    <div class="grid grid-cols-2 gap-4">
+    <!-- Resources Display (Isolé avec wire:ignore pour que Livewire ne recrée pas le DOM en boucle) -->
+    <div class="grid grid-cols-2 gap-4" wire:ignore
+        x-data="{
+            base: {{ $this->currentIron() }},
+            cps: {{ $ironPerSecond }},
+            start: performance.now(),
+            now: performance.now(),
+            get iron() {
+                return this.base + this.cps * (this.now - this.start) / 1000;
+            },
+            init() {
+                setInterval(() => { this.now = performance.now(); }, 100);
+            }
+        }"
+        x-on:sync-iron.window="base = $event.detail.iron; start = performance.now(); now = start">
+
         <div class="bg-gray-800 p-4 rounded-lg">
             <h3 class="text-gray-400 text-sm">Available Iron</h3>
-            <p class="text-3xl font-mono font-bold text-yellow-400" 
-               x-text="iron.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })">
-                {{ number_format($planet->iron, 2, '.', ',') }}
+            <p class="text-3xl font-mono font-bold text-yellow-400"
+            x-text="iron.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })">
             </p>
             <span class="text-xs text-gray-500">+{{ $ironPerSecond }} / sec</span>
         </div>
@@ -44,7 +48,7 @@
         </div>
     </div>
 
-    <!-- Buildings / Construction Section -->
+    <!-- Buildings / Construction Section (C'est la seule partie que Livewire va actualiser) -->
     <div class="bg-gray-800 p-4 rounded-lg space-y-4">
         <h2 class="text-lg font-semibold mb-3">Command Center & Construction</h2>
         
