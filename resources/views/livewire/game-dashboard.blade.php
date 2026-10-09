@@ -7,24 +7,58 @@
         <span class="text-sm bg-blue-600 px-3 py-1 rounded-full uppercase">{{ $planet->type }}</span>
     </header>
 
-    <!-- Toast Notifications Flottantes -->
+    <!-- Toast Notifications Stacking (avec couleurs dynamiques selon la rareté) -->
     <div x-data="{ 
-            show: {{ session()->has('message') || session()->has('error') ? 'true' : 'false' }}, 
-            message: '{{ session()->has('message') ? addslashes(session('message')) : (session()->has('error') ? addslashes(session('error')) : '') }}', 
-            type: '{{ session()->has('error') ? 'error' : 'success' }}' 
-         }"
-         x-init="if(show) { setTimeout(() => show = false, 4000); }"
-         class="fixed bottom-6 right-6 z-50 space-y-2">
+            toasts: [],
+            add(message, type = 'success', rarity = 'common') {
+                let id = Date.now() + Math.random();
+                this.toasts.push({ id, message, type, rarity });
 
-        <template x-if="show">
-            <div @click="show = false"
-                 :class="type === 'success' ? 'bg-green-900 border-green-600 text-green-100' : 'bg-red-900 border-red-600 text-red-100'"
-                 class="px-4 py-3 rounded-xl border shadow-2xl cursor-pointer flex items-center space-x-3 transition transform hover:scale-105">
-                <span class="text-sm font-semibold" x-text="message"></span>
-                <span class="text-xs opacity-60 ml-2">(cliquer pour fermer)</span>
+                setTimeout(() => {
+                    this.remove(id);
+                }, 4000);
+            },
+            remove(id) {
+                this.toasts = this.toasts.filter(t => t.id !== id);
+            },
+            getToastClass(type, rarity) {
+                if (type === 'error') return 'bg-red-900 border-red-600 text-red-100';
+                
+                // Couleurs spécifiques selon la rareté du God Roll
+                switch(rarity) {
+                    case 'legendary': return 'bg-amber-600 border-amber-400 text-amber-950 font-bold shadow-amber-500/50';
+                    case 'epic': return 'bg-purple-900 border-purple-500 text-purple-100 shadow-purple-500/30';
+                    case 'rare': return 'bg-blue-900 border-blue-500 text-blue-100';
+                    default: return 'bg-gray-800 border-gray-600 text-gray-200'; // common
+                }
+            }
+         }"
+         @notify.window="add($event.detail.message, $event.detail.type, $event.detail.rarity)"
+         class="fixed bottom-6 right-6 z-50 flex flex-col space-y-3 pointer-events-none max-w-sm w-full">
+
+        <template x-for="toast in toasts" :key="toast.id">
+            <div @click="remove(toast.id)"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-300"
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                 :class="getToastClass(toast.type, toast.rarity)"
+                 class="pointer-events-auto px-4 py-3 rounded-xl border shadow-2xl cursor-pointer flex items-center justify-between space-x-3 transition transform hover:scale-105">
+                <span class="text-sm font-semibold" x-text="toast.message"></span>
+                <span class="text-xs opacity-60 shrink-0">(fermer)</span>
             </div>
         </template>
     </div>
+
+    <!-- S'il y a un message au premier chargement (F5) -->
+    @if (session()->has('message'))
+        <div x-init="$dispatch('notify', { message: '{{ addslashes(session('message')) }}', type: 'success' })"></div>
+    @endif
+    @if (session()->has('error'))
+        <div x-init="$dispatch('notify', { message: '{{ addslashes(session('error')) }}', type: 'error' })"></div>
+    @endif
 
     <!-- Resources Display (ISOLÉ AVEC wire:ignore, qui émet sa valeur en temps réel vers le parent) -->
     <div class="grid grid-cols-2 gap-4" wire:ignore

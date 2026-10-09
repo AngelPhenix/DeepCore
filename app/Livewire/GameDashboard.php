@@ -21,9 +21,9 @@ class GameDashboard extends Component
         
         if (!$user) {
             $user = User::create([
-                'name' => 'Commandant Test',
-                'email' => 'test@deepcore.local',
-                'password' => bcrypt('password'),
+                'name' => 'admin',
+                'email' => 'admin@admin.com',
+                'password' => bcrypt('admin'),
             ]);
         }
 
@@ -31,7 +31,7 @@ class GameDashboard extends Component
             ['user_id' => $user->id],
             [
                 'name' => 'Nova Prime',
-                'type' => 'rocheuse',
+                'type' => 'Terrestrial',
                 'iron' => 100.00,
                 'energy' => 50.00,
                 'depth' => 0.00,
@@ -55,15 +55,14 @@ class GameDashboard extends Component
         $building = Building::find($buildingId);
         if (!$building) return;
 
-        $iron = $this->currentIron(); // valeur serveur exacte, jamais celle du client
+        $iron = $this->currentIron(); 
 
         if ($iron >= $building->base_cost_iron) {
-            // On "fige" l'état : nouveau fer, nouveau point de départ
             $this->planet->iron = $iron - $building->base_cost_iron;
             $this->planet->last_updated_at = now();
             $this->planet->save();
 
-            // Système de God Roll
+            // Votre logique de God Roll ici...
             $roll = mt_rand(1, 10000);
             $rarity = 'common';
             $multiplier = 1.00;
@@ -87,12 +86,15 @@ class GameDashboard extends Component
                 'efficiency_multiplier' => $multiplier,
             ]);
 
-            session()->flash('message', "Building constructed! Rarity: " . strtoupper($rarity) . " (Multiplier: x{$multiplier})");
-        } else {
-            session()->flash('error', "Not enough iron to build this!");
-        }
+            $msg = "Building constructed! Rarity: " . strtoupper($rarity) . " (Multiplier: x{$multiplier})";
+            
+            // On déclenche la synchro du fer ET le toast de succès
+            $this->dispatch('sync-iron', iron: $this->planet->iron);
+            $this->dispatch('notify', message: $msg, type: 'success', rarity: $rarity);
 
-        $this->dispatch('sync-iron', iron: $this->currentIron());
+        } else {
+            $this->dispatch('notify', message: "Not enough iron to build this!", type: 'error');
+        }
     }
 
     public function render()
