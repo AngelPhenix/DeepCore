@@ -13,7 +13,7 @@ class BuildingSeeder extends Seeder
             'name' => 'Iron Mine',
             'slug' => 'iron-mine',
             'description' => 'Extracts raw iron ore from the depths of the planet.',
-            'base_cost_iron' => 50,
+            'base_cost_iron' => 10,
             'cost_multiplier' => 1.15,
         ]);
 

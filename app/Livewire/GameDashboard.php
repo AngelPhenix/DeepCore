@@ -63,9 +63,31 @@ class GameDashboard extends Component
             $this->planet->last_updated_at = now();
             $this->planet->save();
 
-            // ... ton code de God Roll + ConstructedBuilding::create(...) inchangé ...
+            // Système de God Roll
+            $roll = mt_rand(1, 10000);
+            $rarity = 'common';
+            $multiplier = 1.00;
 
-            session()->flash('message', "...");
+            if ($roll === 1) {
+                $rarity = 'legendary';
+                $multiplier = 5.00;
+            } elseif ($roll <= 100) {
+                $rarity = 'epic';
+                $multiplier = 2.50;
+            } elseif ($roll <= 1000) {
+                $rarity = 'rare';
+                $multiplier = 1.50;
+            }
+
+            ConstructedBuilding::create([
+                'planet_id' => $this->planet->id,
+                'building_id' => $building->id,
+                'level' => 1,
+                'rarity' => $rarity,
+                'efficiency_multiplier' => $multiplier,
+            ]);
+
+            session()->flash('message', "Building constructed! Rarity: " . strtoupper($rarity) . " (Multiplier: x{$multiplier})");
         } else {
             session()->flash('error', "Not enough iron to build this!");
         }
