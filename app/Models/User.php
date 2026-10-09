@@ -29,4 +29,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // Un utilisateur possède plusieurs planètes
+    public function planets()
+    {
+        return $this->hasMany(Planet::class);
+    }
 }
