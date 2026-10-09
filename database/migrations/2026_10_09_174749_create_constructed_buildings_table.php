@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('constructed_buildings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('planet_id')->constrained()->onDelete('cascade');
-            $table->string('building_slug'); // Référence au slug du bâtiment
+            $table->foreignId('building_id')->constrained()->onDelete('cascade');
             $table->unsignedInteger('level')->default(1);
             
             // Les stats uniques générées au craft (le Roll)
